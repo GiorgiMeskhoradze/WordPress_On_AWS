@@ -12,4 +12,5 @@ variable "db_password" {
 variable "rds_sg_id" {
   description = "Security group ID for RDS"
   type        = string
+  sensitive   = true
 }
