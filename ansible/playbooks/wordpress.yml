@@ -1,0 +1,6 @@
+---
+- name: Configure WordPress Servers
+  hosts: tag_Role_wordpress
+  become: true
+  roles:
+    - wordpress

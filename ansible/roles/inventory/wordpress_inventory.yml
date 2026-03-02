@@ -1,0 +1,11 @@
+plugin: aws_ec2
+regions:
+  - eu-central-1
+filters:
+  tag:Role: wordpress
+  instance-state-name: running
+compose:
+  ansible_host: private_ip_address
+  ansible_user: "'ubuntu'"
+  ansible_ssh_private_key_file: "'~/.ssh/your-key.pem'"
+  ansible_ssh_common_args: "'-o ProxyJump=ubuntu@{{ hostvars[groups[\"tag_Role_jenkins\"][0]][\"public_ip_address\"] }} -o StrictHostKeyChecking=no'"

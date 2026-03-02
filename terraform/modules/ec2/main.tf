@@ -8,6 +8,7 @@ resource "aws_instance" "jenkins_instance" {
 
   tags = {
     "Name" = "Jenkins-Server"
+    "Role" = "jenkins" 
   }
 }
 
@@ -32,6 +33,7 @@ resource "aws_launch_template" "aws_instance_launch_template" {
     resource_type = "instance"
     tags = {
       "Name" = "WordPress-Instance"
+      "Role" = "wordpress"
     }
   }
 }

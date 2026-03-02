@@ -1,0 +1,12 @@
+plugin: aws_ec2
+regions:
+  - eu-central-1
+filters:
+  tag:Role: jenkins
+  instance-state-name: running
+hostnames:
+  - ip-address
+compose:
+  ansible_host: public_ip_address
+  ansible_user: " 'ubuntu' "
+  ansible_ssh_private_key_file: " '~/.ssh/myDevKey.pem' "
