@@ -1,33 +1,23 @@
-name: WordPress on AWS — Deploy
+cat > /Users/user/Desktop/Wordpress-AWS/.github/workflows/deploy.yml << 'WORKFLOW'
+name: WordPress on AWS - Deploy
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:    # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     env:
-      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION:    eu-central-1
+      AWS_DEFAULT_REGION: eu-central-1
 
     steps:
-
-      # ── CHECKOUT ──────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # ── TERRAFORM ─────────────────────────────────────────
-      - name: Terraform Init
-        run: cd terraform/environments/dev && terraform init
-
-      - name: Terraform Plan
-        run: cd terraform/environments/dev && terraform plan -var-file=${{ secrets.TFVARS_FILE }}
-        env:
-          TF_VAR_file: ${{ secrets.TFVARS_CONTENT }}
 
       - name: Write tfvars file
         run: |
@@ -35,27 +25,26 @@ jobs:
           ${{ secrets.TFVARS_CONTENT }}
           EOF
 
+      - name: Terraform Init
+        run: cd terraform/environments/dev && terraform init
+
       - name: Terraform Plan
         run: cd terraform/environments/dev && terraform plan -var-file=terraform.tfvars
 
       - name: Terraform Apply
         run: cd terraform/environments/dev && terraform apply -var-file=terraform.tfvars --auto-approve
 
-      # ── GET OUTPUTS ───────────────────────────────────────
       - name: Get RDS Endpoint
         id: rds
         run: |
           RDS_ENDPOINT=$(cd terraform/environments/dev && terraform output -raw rds_endpoint)
           echo "rds_endpoint=$RDS_ENDPOINT" >> $GITHUB_OUTPUT
-          echo "RDS Endpoint: $RDS_ENDPOINT"
 
-      # ── UPDATE ANSIBLE VARS ───────────────────────────────
       - name: Update Ansible vars with RDS endpoint
         run: |
           sed -i 's|db_host: ""|db_host: "${{ steps.rds.outputs.rds_endpoint }}"|' ansible/roles/wordpress/vars/main.yml
 
-      # ── ANSIBLE ───────────────────────────────────────────
-      - name: Install Ansible + boto3
+      - name: Install Ansible and boto3
         run: |
           pip install ansible boto3 botocore
           ansible-galaxy collection install amazon.aws
@@ -67,7 +56,4 @@ jobs:
           cd ansible
           ansible-playbook playbooks/wordpress.yml --vault-password-file /tmp/.vault_pass
           rm -f /tmp/.vault_pass
-```
-
----
-
+WORKFLOW
