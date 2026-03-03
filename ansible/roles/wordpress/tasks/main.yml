@@ -1,0 +1,106 @@
+---
+# WordPress Server Setup
+# Installs: Nginx, PHP-FPM, WordPress, MySQL Client
+
+# ── SYSTEM ────────────────────────────────────────────────
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+# ── NGINX ─────────────────────────────────────────────────
+# Using Nginx over Apache — better performance with PHP-FPM for WordPress at scale
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Enable and start Nginx
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+
+# ── PHP ───────────────────────────────────────────────────
+# Full extension set required by WordPress core + common plugins
+- name: Install PHP and required extensions
+  apt:
+    name:
+      - php-fpm
+      - php-mysql
+      - php-curl
+      - php-gd
+      - php-mbstring
+      - php-xml
+      - php-xmlrpc
+      - php-soap
+      - php-intl
+      - php-zip
+    state: present
+
+# ── MYSQL CLIENT ──────────────────────────────────────────
+# python3-pymysql required by Ansible to manage MySQL — not just for humans
+- name: Install MySQL client and Python MySQL lib
+  apt:
+    name:
+      - mysql-client
+      - python3-pymysql
+    state: present
+
+# ── WORDPRESS ─────────────────────────────────────────────
+- name: Create WordPress directory
+  file:
+    path: "{{ wp_install_dir }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Download WordPress
+  get_url:
+    url: https://wordpress.org/latest.tar.gz
+    dest: /tmp/wordpress.tar.gz
+
+- name: Extract WordPress
+  unarchive:
+    src: /tmp/wordpress.tar.gz
+    dest: /tmp/
+    remote_src: yes
+
+- name: Copy WordPress files to install dir
+  copy:
+    src: /tmp/wordpress/
+    dest: "{{ wp_install_dir }}/"
+    remote_src: yes
+    owner: www-data
+    group: www-data
+
+# ── WP-CONFIG ─────────────────────────────────────────────
+# Credentials injected at runtime from vars — never hardcoded
+- name: Deploy wp-config.php from template
+  template:
+    src: wp-config.j2
+    dest: "{{ wp_install_dir }}/wp-config.php"
+    owner: www-data
+    group: www-data
+    mode: '0640'
+
+# ── NGINX CONFIG ──────────────────────────────────────────
+- name: Deploy Nginx config from template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/wordpress
+  notify: Reload Nginx
+
+- name: Enable WordPress site
+  file:
+    src: /etc/nginx/sites-available/wordpress
+    dest: /etc/nginx/sites-enabled/wordpress
+    state: link
+  notify: Reload Nginx
+
+# Removing default site to avoid conflict on port 80
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload Nginx

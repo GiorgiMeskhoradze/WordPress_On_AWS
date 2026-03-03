@@ -91,6 +91,11 @@
 
 # ── AWS CLI ───────────────────────────────────────────────
 # No apt repository available — manual install required
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+
 - name: Download AWS CLI
   get_url:
     url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
@@ -120,3 +125,4 @@
   pip:
     name: boto3
     executable: pip3
+    extra_args: --break-system-packages

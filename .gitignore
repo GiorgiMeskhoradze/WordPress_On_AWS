@@ -27,3 +27,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Ansible secrets — encrypted vault file is fine to commit, plain text is not
+ansible/roles/wordpress/vars/secrets.yml
