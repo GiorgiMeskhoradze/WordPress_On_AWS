@@ -7,6 +7,34 @@
   apt:
     update_cache: yes
 
+# ── SWAP ──────────────────────────────────────────────────
+# t3.micro only has 1GB RAM — 2GB swap prevents Jenkins from freezing
+- name: Create swap file
+  command: fallocate -l 2G /swapfile
+  args:
+    creates: /swapfile
+
+- name: Set swap permissions
+  file:
+    path: /swapfile
+    mode: '0600'
+
+- name: Format swap
+  command: mkswap /swapfile
+  args:
+    creates: /swapfile
+
+- name: Enable swap
+  command: swapon /swapfile
+  args:
+    creates: /proc/swaps
+
+- name: Make swap permanent on reboot
+  lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present
+
 # ── JAVA ──────────────────────────────────────────────────
 # Required by Jenkins — cannot start without it
 - name: Install Java
@@ -126,3 +154,4 @@
     name: boto3
     executable: pip3
     extra_args: --break-system-packages
+
