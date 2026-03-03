@@ -21,18 +21,18 @@ pipeline {
             }
         }
 
-        stage ('Terraform plan') {
-            steps { 
-                script {
-                    sh "cd terraform/environments/dev && terraform plan"
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([file(credentialsId: 'terraform-tfvars', variable: 'TFVARS')]) {
+                    sh "cd terraform/environments/dev && terraform plan -var-file=$TFVARS"
                 }
             }
         }
 
-        stage ('Terraform apply') {
+        stage('Terraform Apply') {
             steps {
-                script {
-                    sh "cd terraform/environments/dev && terraform apply --auto-approve"
+                withCredentials([file(credentialsId: 'terraform-tfvars', variable: 'TFVARS')]) {
+                    sh "cd terraform/environments/dev && terraform apply -var-file=$TFVARS --auto-approve"
                 }
             }
         }
