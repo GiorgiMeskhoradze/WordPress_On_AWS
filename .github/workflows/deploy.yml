@@ -29,6 +29,16 @@ jobs:
           pip install ansible boto3 botocore
           ansible-galaxy collection install amazon.aws
 
+      - name: Get Jenkins IP
+        run: |
+          JENKINS_IP=$(aws ec2 describe-instances \
+            --region eu-central-1 \
+            --filters "Name=tag:Role,Values=jenkins" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].PublicIpAddress" \
+            --output text)
+          echo "Jenkins IP: $JENKINS_IP"
+          sed -i "s|YOUR_JENKINS_IP|$JENKINS_IP|" ansible/roles/inventory/wordpress.aws_ec2.yml
+
       - name: Configure WordPress servers
         run: |
           echo "${{ secrets.VAULT_PASS }}" > /tmp/.vault_pass

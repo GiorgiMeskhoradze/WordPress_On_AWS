@@ -11,4 +11,4 @@ compose:
   ansible_host: private_ip_address
   ansible_user: "'ubuntu'"
   ansible_ssh_private_key_file: "'~/.ssh/myDevKey.pem'"
-  ansible_ssh_common_args: "'-o ProxyJump=ubuntu@{{ hostvars[groups[\"tag_Role_jenkins\"][0]][\"public_ip_address\"] }} -o StrictHostKeyChecking=no'"
+  ansible_ssh_common_args: "'-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i ~/.ssh/myDevKey.pem -o StrictHostKeyChecking=no -W %h:%p ubuntu@YOUR_JENKINS_IP\"'"
