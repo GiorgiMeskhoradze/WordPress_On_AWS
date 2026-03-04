@@ -18,33 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Write tfvars file
+      - name: Setup SSH key
         run: |
-          cat > terraform/environments/dev/terraform.tfvars << 'EOF'
-          ${{ secrets.TFVARS_CONTENT }}
-          EOF
-          
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: cd terraform/environments/dev && terraform init
-
-      - name: Terraform Plan
-        run: cd terraform/environments/dev && terraform plan -var-file=terraform.tfvars
-
-      - name: Terraform Apply
-        run: cd terraform/environments/dev && terraform apply -var-file=terraform.tfvars --auto-approve
-
-      - name: Get RDS Endpoint
-        id: rds
-        run: |
-          RDS_ENDPOINT=$(cd terraform/environments/dev && terraform output -raw rds_endpoint)
-          echo "rds_endpoint=$RDS_ENDPOINT" >> $GITHUB_OUTPUT
-
-      - name: Update Ansible vars with RDS endpoint
-        run: |
-          sed -i 's|db_host: ""|db_host: "${{ steps.rds.outputs.rds_endpoint }}"|' ansible/roles/wordpress/vars/main.yml
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/myDevKey.pem
+          chmod 400 ~/.ssh/myDevKey.pem
 
       - name: Install Ansible and boto3
         run: |
