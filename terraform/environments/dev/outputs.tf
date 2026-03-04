@@ -15,3 +15,7 @@ output "vpc_id" {
   description = "VPC ID — useful for debugging networking issues"
   value       = module.networking.vpc_id
 }
+
+output "jenkins_ip" {
+  value = module.ec2.jenkins_ip
+}
