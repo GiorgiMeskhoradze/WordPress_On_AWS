@@ -1,0 +1,204 @@
+=== /Users/user/Desktop/Wordpress-AWS/ansible/terraform.tfstate ===
+{
+  "version": 4,
+  "terraform_version": "1.14.3",
+  "serial": 1,
+  "lineage": "428103dd-1247-a1fb-00cf-e71d24cbaedb",
+  "outputs": {},
+  "resources": [],
+  "check_results": null
+}
+=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/vars/secrets.yml ===
+$ANSIBLE_VAULT;1.1;AES256
+61333864653866306633316137653739393534663661353833623362336362646530666465353134
+6431653562386638653333356564386465616663666639310a626233623134643835396636643665
+30386237663031653662396639373337383935626235326663613738326639626666343166323162
+3735633862666163620a373966373439623338343436316531313437303364613166666662343733
+64653665643834653364316132623864386236366632636637633766383466613130386362633166
+65306235636439623935373031353666656534663435633330346435623934633033653036326537
+356331393930303231366538346436656461
+=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/vars/main.yml ===
+# ── DATABASE ──────────────────────────────────────────────
+db_name: wordpress
+db_user: admin
+db_host: ""
+
+# ── WORDPRESS ─────────────────────────────────────────────
+wp_install_dir: /var/www/wordpress
+wp_site_url: "https://devlearning.store"
+wp_admin_user: admin
+wp_admin_email: "t3chnicalemail@gmail.com"
+
+# ── NGINX ─────────────────────────────────────────────────
+server_name: "devlearning.store"=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/tasks/main.yml ===
+---
+# WordPress Server Setup
+# user_data.sh handles: Nginx, PHP-FPM, EFS mount
+# Ansible handles: WordPress files, wp-config, Nginx config
+
+# ── SYSTEM ────────────────────────────────────────────────
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+# ── WORDPRESS ─────────────────────────────────────────────
+- name: Create WordPress directory
+  file:
+    path: "{{ wp_install_dir }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Download WordPress
+  get_url:
+    url: https://wordpress.org/latest.tar.gz
+    dest: /tmp/wordpress.tar.gz
+
+- name: Extract WordPress
+  unarchive:
+    src: /tmp/wordpress.tar.gz
+    dest: /tmp/
+    remote_src: yes
+
+- name: Copy WordPress files to install dir
+  copy:
+    src: /tmp/wordpress/
+    dest: "{{ wp_install_dir }}/"
+    remote_src: yes
+    owner: www-data
+    group: www-data
+
+# ── WP-CONFIG ─────────────────────────────────────────────
+# Credentials injected at runtime from vars — never hardcoded
+- name: Deploy wp-config.php from template
+  template:
+    src: wp-config.j2
+    dest: "{{ wp_install_dir }}/wp-config.php"
+    owner: www-data
+    group: www-data
+    mode: '0640'
+
+# ── NGINX CONFIG ──────────────────────────────────────────
+- name: Deploy Nginx config from template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/wordpress
+  notify: Reload Nginx
+
+- name: Enable WordPress site
+  file:
+    src: /etc/nginx/sites-available/wordpress
+    dest: /etc/nginx/sites-enabled/wordpress
+    state: link
+  notify: Reload Nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload Nginx=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/templates/wp-config.j2 ===
+<?php
+# ── DATABASE ──────────────────────────────────────────────
+# Values injected at runtime from vars/main.yml — never hardcoded
+define( 'DB_NAME',     '{{ db_name }}' );
+define( 'DB_USER',     '{{ db_user }}' );
+define( 'DB_PASSWORD', '{{ db_password }}' );
+define( 'DB_HOST',     '{{ db_host }}' );
+define( 'DB_CHARSET',  'utf8' );
+define( 'DB_COLLATE',  '' );
+
+# ── SECURITY KEYS ─────────────────────────────────────────
+# Generate unique values at: https://api.wordpress.org/secret-key/1.1/salt/
+define( 'AUTH_KEY',         'put your unique phrase here' );
+define( 'SECURE_AUTH_KEY',  'put your unique phrase here' );
+define( 'LOGGED_IN_KEY',    'put your unique phrase here' );
+define( 'NONCE_KEY',        'put your unique phrase here' );
+define( 'AUTH_SALT',        'put your unique phrase here' );
+define( 'SECURE_AUTH_SALT', 'put your unique phrase here' );
+define( 'LOGGED_IN_SALT',   'put your unique phrase here' );
+define( 'NONCE_SALT',       'put your unique phrase here' );
+
+$table_prefix = 'wp_';
+
+define( 'WP_DEBUG', false );
+
+if ( ! defined( 'ABSPATH' ) ) {
+    define( 'ABSPATH', __DIR__ . '/' );
+}
+
+require_once ABSPATH . 'wp-settings.php';=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/templates/nginx.conf.j2 ===
+server {
+    listen 80;
+    server_name {{ server_name }};
+
+    # ── WORDPRESS PERMALINKS ───────────────────────────────
+    # try_files needed for pretty URLs to work
+    root {{ wp_install_dir }};
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    # ── PHP-FPM ───────────────────────────────────────────
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # ── SECURITY ──────────────────────────────────────────
+    # Block access to .htaccess and other hidden files
+    location ~ /\.ht {
+        deny all;
+    }
+
+    location = /favicon.ico { log_not_found off; access_log off; }
+    location = /robots.txt  { log_not_found off; access_log off; allow all; }
+
+    # ── STATIC ASSETS ─────────────────────────────────────
+    # Aggressive caching for images, CSS, JS — reduces server load
+    location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
+        expires max;
+        log_not_found off;
+    }
+}=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/wordpress/handlers/main.yml ===
+---
+- name: Reload Nginx
+  systemd:
+    name: nginx
+    state: reloaded=== /Users/user/Desktop/Wordpress-AWS/ansible/roles/inventory/wordpress.aws_ec2.yml ===
+plugin: aws_ec2
+regions:
+  - eu-central-1
+filters:
+  tag:Role: wordpress
+  instance-state-name: running
+keyed_groups:
+  - key: tags.Role
+    prefix: tag_Role
+compose:
+  ansible_host: private_ip_address
+  ansible_user: "'ubuntu'"
+  ansible_ssh_private_key_file: "'~/.ssh/myDevKey.pem'"
+  ansible_ssh_common_args: "'-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i ~/.ssh/myDevKey.pem -o StrictHostKeyChecking=no -W %h:%p ubuntu@YOUR_JENKINS_IP\"'"=== /Users/user/Desktop/Wordpress-AWS/ansible/playbooks/wordpress.yml ===
+---
+- name: Configure WordPress Servers
+  hosts: tag_Role_wordpress
+  become: true
+  vars_files:
+    - ../roles/wordpress/vars/secrets.yml
+  roles:
+    - wordpress=== /Users/user/Desktop/Wordpress-AWS/ansible/ansible.cfg ===
+[defaults]
+roles_path = ./roles
+inventory = ./roles/inventory/
+host_key_checking = false
+remote_user = ubuntu
+private_key_file = ~/.ssh/myDevKey.pem
+enable_plugins = aws_ec2
+
+[ssh_connection]
+ssh_args = -o StrictHostKeyChecking=no -o ForwardAgent=yes

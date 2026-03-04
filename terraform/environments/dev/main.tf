@@ -35,6 +35,8 @@ module "alb" {
   public_subnet_ids = module.networking.public_subnet_ids
   vpc_id            = module.networking.vpc_id
   certificate_arn   = module.acm.certificate_arn
+  hosted_zone_id = var.hosted_zone_id
+  domain_name    = var.domain_name
 }
 
 module "ec2" {

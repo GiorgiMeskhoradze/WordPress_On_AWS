@@ -17,3 +17,13 @@ variable "certificate_arn" {
   description = "Certificate arn for HTTPS Listener"
   type        = string
 }
+
+variable "hosted_zone_id" {
+  description = "Hosted Zone ID for Route53"
+  type        = string
+}
+
+variable "domain_name" {
+  description = "Domain name"
+  type        = string
+}

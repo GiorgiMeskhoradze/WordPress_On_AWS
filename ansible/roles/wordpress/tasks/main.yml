@@ -1,50 +1,12 @@
 ---
 # WordPress Server Setup
-# Installs: Nginx, PHP-FPM, WordPress, MySQL Client
+# user_data.sh handles: Nginx, PHP-FPM, EFS mount
+# Ansible handles: WordPress files, wp-config, Nginx config
 
 # ── SYSTEM ────────────────────────────────────────────────
 - name: Update apt cache
   apt:
     update_cache: yes
-
-# ── NGINX ─────────────────────────────────────────────────
-# Using Nginx over Apache — better performance with PHP-FPM for WordPress at scale
-- name: Install Nginx
-  apt:
-    name: nginx
-    state: present
-
-- name: Enable and start Nginx
-  systemd:
-    name: nginx
-    enabled: yes
-    state: started
-
-# ── PHP ───────────────────────────────────────────────────
-# Full extension set required by WordPress core + common plugins
-- name: Install PHP and required extensions
-  apt:
-    name:
-      - php-fpm
-      - php-mysql
-      - php-curl
-      - php-gd
-      - php-mbstring
-      - php-xml
-      - php-xmlrpc
-      - php-soap
-      - php-intl
-      - php-zip
-    state: present
-
-# ── MYSQL CLIENT ──────────────────────────────────────────
-# python3-pymysql required by Ansible to manage MySQL — not just for humans
-- name: Install MySQL client and Python MySQL lib
-  apt:
-    name:
-      - mysql-client
-      - python3-pymysql
-    state: present
 
 # ── WORDPRESS ─────────────────────────────────────────────
 - name: Create WordPress directory
@@ -98,7 +60,6 @@
     state: link
   notify: Reload Nginx
 
-# Removing default site to avoid conflict on port 80
 - name: Remove default Nginx site
   file:
     path: /etc/nginx/sites-enabled/default
