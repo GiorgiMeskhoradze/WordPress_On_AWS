@@ -55,4 +55,3 @@ jobs:
           cd ansible
           ansible-playbook playbooks/wordpress.yml --vault-password-file /tmp/.vault_pass
           rm -f /tmp/.vault_pass
-WORKFLOW
