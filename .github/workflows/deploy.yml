@@ -1,4 +1,3 @@
-cat > /Users/user/Desktop/Wordpress-AWS/.github/workflows/deploy.yml << 'WORKFLOW'
 name: WordPress on AWS - Deploy
 
 on:
