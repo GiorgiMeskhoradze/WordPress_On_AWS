@@ -51,13 +51,8 @@ jobs:
 
       - name: Suspend ASG health checks
         run: |
-          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
-            --region eu-central-1 \
-            --query "AutoScalingGroups[?contains(Tags[?Key=='Name'].Value, 'wordpress')].AutoScalingGroupName" \
-            --output text)
-          echo "ASG Name: $ASG_NAME"
           aws autoscaling suspend-processes \
-            --auto-scaling-group-name $ASG_NAME \
+            --auto-scaling-group-name WordPress-ASG \
             --scaling-processes HealthCheck ReplaceUnhealthy \
             --region eu-central-1
 
@@ -70,11 +65,7 @@ jobs:
       - name: Resume ASG health checks
         if: always()
         run: |
-          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
-            --region eu-central-1 \
-            --query "AutoScalingGroups[?contains(Tags[?Key=='Name'].Value, 'wordpress')].AutoScalingGroupName" \
-            --output text)
           aws autoscaling resume-processes \
-            --auto-scaling-group-name $ASG_NAME \
+            --auto-scaling-group-name WordPress-ASG \
             --scaling-processes HealthCheck ReplaceUnhealthy \
             --region eu-central-1
