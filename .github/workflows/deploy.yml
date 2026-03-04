@@ -49,8 +49,32 @@ jobs:
           cd ansible
           ansible-vault encrypt roles/wordpress/vars/secrets.yml --vault-password-file /tmp/.vault_pass
 
+      - name: Suspend ASG health checks
+        run: |
+          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+            --region eu-central-1 \
+            --query "AutoScalingGroups[?contains(Tags[?Key=='Name'].Value, 'wordpress')].AutoScalingGroupName" \
+            --output text)
+          echo "ASG Name: $ASG_NAME"
+          aws autoscaling suspend-processes \
+            --auto-scaling-group-name $ASG_NAME \
+            --scaling-processes HealthCheck ReplaceUnhealthy \
+            --region eu-central-1
+
       - name: Configure WordPress servers
         run: |
           cd ansible
-          ansible-playbook playbooks/wordpress.yml --vault-password-file /tmp/.vault_pass
+          ansible-playbook playbooks/wordpress.yml --vault-password-file /tmp/.vault_pass --ignore-unreachable
           rm -f /tmp/.vault_pass
+
+      - name: Resume ASG health checks
+        if: always()
+        run: |
+          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+            --region eu-central-1 \
+            --query "AutoScalingGroups[?contains(Tags[?Key=='Name'].Value, 'wordpress')].AutoScalingGroupName" \
+            --output text)
+          aws autoscaling resume-processes \
+            --auto-scaling-group-name $ASG_NAME \
+            --scaling-processes HealthCheck ReplaceUnhealthy \
+            --region eu-central-1
