@@ -97,7 +97,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_jenkins_ui_port" {
 
 resource "aws_vpc_security_group_ingress_rule" "allow_jenkins_ssh_port" {
   security_group_id = aws_security_group.jenkins_sg_group.id
-  cidr_ipv4         = "${trimspace(data.http.my_ip.response_body)}/32"
+  cidr_ipv4         = "0.0.0.0/0"
   from_port         = 22
   to_port           = 22
   ip_protocol       = "tcp"

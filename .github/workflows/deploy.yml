@@ -39,10 +39,18 @@ jobs:
           echo "Jenkins IP: $JENKINS_IP"
           sed -i "s|YOUR_JENKINS_IP|$JENKINS_IP|" ansible/roles/inventory/wordpress.aws_ec2.yml
 
-      - name: Configure WordPress servers
+      - name: Write Ansible secrets
         run: |
           echo "${{ secrets.VAULT_PASS }}" > /tmp/.vault_pass
           chmod 600 /tmp/.vault_pass
+          cat > ansible/roles/wordpress/vars/secrets.yml << 'EOF'
+          ${{ secrets.ANSIBLE_SECRETS }}
+          EOF
+          cd ansible
+          ansible-vault encrypt roles/wordpress/vars/secrets.yml --vault-password-file /tmp/.vault_pass
+
+      - name: Configure WordPress servers
+        run: |
           cd ansible
           ansible-playbook playbooks/wordpress.yml --vault-password-file /tmp/.vault_pass
           rm -f /tmp/.vault_pass
