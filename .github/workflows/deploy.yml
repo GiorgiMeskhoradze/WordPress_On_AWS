@@ -39,6 +39,15 @@ jobs:
           echo "Jenkins IP: $JENKINS_IP"
           sed -i "s|YOUR_JENKINS_IP|$JENKINS_IP|" ansible/roles/inventory/wordpress.aws_ec2.yml
 
+      - name: Get RDS endpoint
+        run: |
+          RDS_ENDPOINT=$(aws rds describe-db-instances \
+            --region eu-central-1 \
+            --query "DBInstances[0].Endpoint.Address" \
+            --output text)
+          echo "RDS Endpoint: $RDS_ENDPOINT"
+          sed -i "s|db_host: \"\"|db_host: \"$RDS_ENDPOINT\"|" ansible/roles/wordpress/vars/main.yml
+
       - name: Write Ansible secrets
         run: |
           echo "${{ secrets.VAULT_PASS }}" > /tmp/.vault_pass
