@@ -1,4 +1,3 @@
-cat > /Users/user/Desktop/Wordpress-AWS/terraform/modules/ec2/user_data.sh << 'SCRIPT'
 #!/bin/bash
 exec > /var/log/user_data.log 2>&1
 
@@ -37,4 +36,3 @@ systemctl start nginx php8.3-fpm
 
 # ── SIGNAL ANSIBLE ────────────────────────────────────────
 touch /tmp/userdata_complete
-SCRIPT
