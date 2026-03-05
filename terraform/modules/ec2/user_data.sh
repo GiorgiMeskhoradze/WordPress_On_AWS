@@ -1,22 +1,51 @@
-#!/bin/bash
-apt-get update -y
+---
+# user_data.sh handles: Nginx, PHP, EFS mount, Nginx config
+# Ansible handles: WordPress files on EFS, wp-config.php
 
-# ── INSTALL SOFTWARE ──────────────────────────────────────
-apt-get install -y nginx php-fpm php-mysql php-curl php-gd php-mbstring php-xml php-zip amazon-efs-utils
+# ── WAIT FOR USER DATA ────────────────────────────────────
+- name: Wait for user_data to complete
+  wait_for:
+    path: /tmp/userdata_complete
+    timeout: 300
 
-# ── MOUNT EFS ─────────────────────────────────────────────
-mkdir -p /var/www/wordpress
-mount -t efs ${efs_id}:/ /var/www/wordpress
+# ── SYSTEM ────────────────────────────────────────────────
+- name: Update apt cache
+  apt:
+    update_cache: yes
 
-# persist mount after reboot
-echo "${efs_id}:/ /var/www/wordpress efs defaults,_netdev 0 0" >> /etc/fstab
+# ── WORDPRESS ─────────────────────────────────────────────
+- name: Create WordPress directory
+  file:
+    path: "{{ wp_install_dir }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
 
-# ── NGINX CONFIG ──────────────────────────────────────────
-# set correct permissions
-chown -R www-data:www-data /var/www/wordpress
-chmod -R 755 /var/www/wordpress
+- name: Download WordPress
+  get_url:
+    url: https://wordpress.org/latest.tar.gz
+    dest: /tmp/wordpress.tar.gz
 
-# ── START SERVICES ────────────────────────────────────────
-systemctl enable nginx php-fpm
-systemctl start nginx php-fpm
-systemctl restart nginx php-fpm
+- name: Extract WordPress
+  unarchive:
+    src: /tmp/wordpress.tar.gz
+    dest: /tmp/
+    remote_src: yes
+
+- name: Copy WordPress files to install dir
+  copy:
+    src: /tmp/wordpress/
+    dest: "{{ wp_install_dir }}/"
+    remote_src: yes
+    owner: www-data
+    group: www-data
+
+# ── WP-CONFIG ─────────────────────────────────────────────
+- name: Deploy wp-config.php from template
+  template:
+    src: wp-config.j2
+    dest: "{{ wp_install_dir }}/wp-config.php"
+    owner: www-data
+    group: www-data
+    mode: '0640'

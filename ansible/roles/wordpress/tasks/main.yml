@@ -3,6 +3,12 @@
 # user_data.sh handles: Nginx, PHP-FPM, EFS mount
 # Ansible handles: WordPress files, wp-config, Nginx config
 
+# ── WAIT FOR USER DATA ────────────────────────────────────
+- name: Wait for user_data to complete
+  wait_for:
+    path: /tmp/userdata_complete
+    timeout: 300
+
 # ── SYSTEM ────────────────────────────────────────────────
 - name: Update apt cache
   apt:
