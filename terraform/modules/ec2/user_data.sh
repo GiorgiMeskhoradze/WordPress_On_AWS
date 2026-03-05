@@ -18,13 +18,12 @@ apt-get install -y \
   php-zip \
   mysql-client \
   python3-pymysql \
-  amazon-efs-utils \
   nfs-common
 
 # ── MOUNT EFS ─────────────────────────────────────────────
 mkdir -p /var/www/wordpress
-mount -t efs ${efs_id}:/ /var/www/wordpress
-echo "${efs_id}:/ /var/www/wordpress efs defaults,_netdev 0 0" >> /etc/fstab
+mount -t nfs4 ${efs_id}.efs.eu-central-1.amazonaws.com:/ /var/www/wordpress
+echo "${efs_id}.efs.eu-central-1.amazonaws.com:/ /var/www/wordpress nfs4 defaults,_netdev 0 0" >> /etc/fstab
 
 # ── PERMISSIONS ───────────────────────────────────────────
 chown -R www-data:www-data /var/www/wordpress

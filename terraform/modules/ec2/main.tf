@@ -27,6 +27,7 @@ resource "aws_launch_template" "aws_instance_launch_template" {
     efs_id      = var.efs_id
     db_host     = var.db_host
     db_password = var.db_password
+    PHP_VERSION  = "8.3"
   }))
 
   tag_specifications {
