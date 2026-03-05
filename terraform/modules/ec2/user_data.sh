@@ -1,51 +1,40 @@
----
-# user_data.sh handles: Nginx, PHP, EFS mount, Nginx config
-# Ansible handles: WordPress files on EFS, wp-config.php
+cat > /Users/user/Desktop/Wordpress-AWS/terraform/modules/ec2/user_data.sh << 'SCRIPT'
+#!/bin/bash
+exec > /var/log/user_data.log 2>&1
 
-# ── WAIT FOR USER DATA ────────────────────────────────────
-- name: Wait for user_data to complete
-  wait_for:
-    path: /tmp/userdata_complete
-    timeout: 300
+apt-get update -y
 
-# ── SYSTEM ────────────────────────────────────────────────
-- name: Update apt cache
-  apt:
-    update_cache: yes
+# ── INSTALL SOFTWARE ──────────────────────────────────────
+apt-get install -y \
+  nginx \
+  php-fpm \
+  php-mysql \
+  php-curl \
+  php-gd \
+  php-mbstring \
+  php-xml \
+  php-xmlrpc \
+  php-soap \
+  php-intl \
+  php-zip \
+  mysql-client \
+  python3-pymysql \
+  amazon-efs-utils \
+  nfs-common
 
-# ── WORDPRESS ─────────────────────────────────────────────
-- name: Create WordPress directory
-  file:
-    path: "{{ wp_install_dir }}"
-    state: directory
-    owner: www-data
-    group: www-data
-    mode: '0755'
+# ── MOUNT EFS ─────────────────────────────────────────────
+mkdir -p /var/www/wordpress
+mount -t efs ${efs_id}:/ /var/www/wordpress
+echo "${efs_id}:/ /var/www/wordpress efs defaults,_netdev 0 0" >> /etc/fstab
 
-- name: Download WordPress
-  get_url:
-    url: https://wordpress.org/latest.tar.gz
-    dest: /tmp/wordpress.tar.gz
+# ── PERMISSIONS ───────────────────────────────────────────
+chown -R www-data:www-data /var/www/wordpress
+chmod -R 755 /var/www/wordpress
 
-- name: Extract WordPress
-  unarchive:
-    src: /tmp/wordpress.tar.gz
-    dest: /tmp/
-    remote_src: yes
+# ── START SERVICES ────────────────────────────────────────
+systemctl enable nginx php8.3-fpm
+systemctl start nginx php8.3-fpm
 
-- name: Copy WordPress files to install dir
-  copy:
-    src: /tmp/wordpress/
-    dest: "{{ wp_install_dir }}/"
-    remote_src: yes
-    owner: www-data
-    group: www-data
-
-# ── WP-CONFIG ─────────────────────────────────────────────
-- name: Deploy wp-config.php from template
-  template:
-    src: wp-config.j2
-    dest: "{{ wp_install_dir }}/wp-config.php"
-    owner: www-data
-    group: www-data
-    mode: '0640'
+# ── SIGNAL ANSIBLE ────────────────────────────────────────
+touch /tmp/userdata_complete
+SCRIPT
